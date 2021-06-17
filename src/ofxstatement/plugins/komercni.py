@@ -81,6 +81,7 @@ class KomercniParser(StatementParser):
             elif desc in ('Card purchase', 'Contactless card purchase',
                           'Credit of purchase', 'Internet purchase 3D Secure',
                           'Purchase on the internet',
+                          'Mobilní platba na internetu',
                           'Nákup bezkontaktní kartou', 'Nákup na internetu',
                           'Nákup na internetu 3D Secure', 'Nákup u obchodníka',
                           'Vrácení nákupu'):
