@@ -89,7 +89,7 @@ class KomercniParser(StatementParser):
                 line.memo = av2
                 line.trntype = 'POS'
             elif desc in ('Deposit', 'Příchozí úhrada/vklad na účet'):
-                line.payee = av1
+                line.payee = av1 or message
                 line.memo = message
                 line.trntype = 'DEP'
             elif desc in ('Force pay debit', 'Priority 3 check', 'Platba na vrub vašeho účtu'):
