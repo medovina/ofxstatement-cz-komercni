@@ -61,11 +61,11 @@ class KomercniParser(StatementParser):
             message = row[message_field]
             av1 = row[av1_field].strip()
             av2 = row[av2_field].strip()
-            if desc in ('Ach deposit', 'Transfer credit', 'Příchozí úhrada'):
+            if desc in ('Ach deposit', 'Incoming payment', 'Transfer credit', 'Příchozí úhrada'):
                 line.payee = row[counter_account_field]
                 line.memo = message
                 line.trntype = 'DEP'
-            elif desc in ('Ach withdrawal', 'Odchozí úhrada'):
+            elif desc in ('Ach withdrawal', 'Odchozí úhrada', 'Outgoing payment'):
                 counter = row[counter_account_field]
                 line.payee = counter or message
                 line.memo = row[message_payee_field]
@@ -79,11 +79,13 @@ class KomercniParser(StatementParser):
                 line.memo = row[counter_account_field]
                 line.trntype = 'FEE'
             elif desc in ('Card purchase', 'Contactless card purchase',
-                          'Credit of purchase', 'Internet purchase 3D Secure',
-                          'Purchase on the internet',
+                          'Credit of purchase', 'Dobití mobilního telefonu',
+                          'Internet purchase 3D Secure',
                           'Mobilní platba na internetu',
                           'Nákup bezkontaktní kartou', 'Nákup na internetu',
                           'Nákup na internetu 3D Secure', 'Nákup u obchodníka',
+                          'Opakovaná platba', 'Purchase on the internet',
+                          'Recharge of mobile phone', 'Recurring payment',
                           'Vrácení nákupu'):
                 line.payee = av1
                 line.memo = av2
@@ -92,7 +94,8 @@ class KomercniParser(StatementParser):
                 line.payee = av1 or message
                 line.memo = message
                 line.trntype = 'DEP'
-            elif desc in ('Force pay debit', 'Priority 3 check', 'Platba na vrub vašeho účtu'):
+            elif desc in ('Debit memo', 'Debit transfer', 'Force pay debit',
+                          'Priority 3 check', 'Platba na vrub vašeho účtu'):
                 line.payee = message or row[counter_account_field] or row[counter_bank_field]
                 line.memo = av1
                 line.trntype = 'PAYMENT'
