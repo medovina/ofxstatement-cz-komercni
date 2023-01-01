@@ -80,11 +80,12 @@ class KomercniParser(StatementParser):
                 line.trntype = 'FEE'
             elif desc in ('Card purchase', 'Contactless card purchase',
                           'Credit of purchase', 'Dobití mobilního telefonu',
-                          'Internet purchase 3D Secure',
+                          'Internet mobile payment', 'Internet purchase 3D Secure',
                           'Mobilní platba na internetu',
                           'Nákup bezkontaktní kartou', 'Nákup na internetu',
                           'Nákup na internetu 3D Secure', 'Nákup u obchodníka',
-                          'Opakovaná platba', 'Purchase on the internet',
+                          'Opakovaná platba', 'Opakovaná platba tokenem',
+                          'Purchase on the internet',
                           'Recharge of mobile phone', 'Recurring payment',
                           'Vrácení nákupu'):
                 line.payee = av1
