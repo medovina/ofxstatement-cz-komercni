@@ -102,8 +102,10 @@ class KomercniParser(StatementParser):
                 line.payee = message or row[counter_account_field] or row[counter_bank_field]
                 line.memo = av1
                 line.trntype = 'PAYMENT'
-            elif desc in ('ATM balance inquiry fee', 'Dotaz na zůstatek v ATM', 'Fee',
-                          'Payment card maintenance', 'Poplatek', 'Vedení platební karty'):
+            elif desc in ('ATM balance inquiry fee', 'Card replacement',
+                          'Dotaz na zůstatek v ATM', 'Fee',
+                          'Payment card maintenance', 'Poplatek',
+                          'Poskytnutí karty-stoplistace', 'Vedení platební karty'):
                 line.payee = av1
                 line.memo = av2
                 line.trntype = 'FEE'
