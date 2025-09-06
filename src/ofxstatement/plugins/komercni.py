@@ -3,11 +3,21 @@ from ofxstatement.parser import StatementParser
 from ofxstatement.plugin import Plugin
 from ofxstatement.statement import Statement, StatementLine
 
-def index_of(s, t, u):
-    try:
-        return s.index(t)
-    except ValueError:
-        return s.index(u)
+transaction_types = [
+    ('CASH', ['Výběr hotovosti z bankomatu']),
+    ('DIRECTDEBIT', ['Odeslané inkaso']),
+    ('DIRECTDEP', ['Příchozí úhrada', 'Příchozí úhrada SEPA platba',
+                   'Vrácení nákupu', 'Zahraniční příchozí úhrada']),
+    ('FEE', ['Dotaz na zůstatek v ATM', 'Poplatek', 'Poplatek za tarif', 'Poplatek za výběr',
+             'Poplatek za výběr z bankomatu', 'Vedení platební karty', 'Změna parametrů karty']),
+    ('INT', ['Odepsaný úrok']),
+    ('PAYMENT', ['Mobilní nákup na internetu', 'Mobilní platba na internetu',
+                 'Nákup na internetu', 'Nákup na internetu 3D Secure',
+                 'Odchozí úhrada', 'Odchozí SEPA úhrada']),
+    ('POS', ['Nákup bezkontaktní kartou', 'Nákup u obchodníka', 'Úhrada bezkontaktní kartou']),
+    ('REPEATPMT', ['Opakovaná platba', 'Trvalý příkaz']),
+    ('SRVCHG', ['Poskytnutí karty-stoplistace', 'Zaslání karty/PIN kurýrem'])
+]
 
 class KomercniParser(StatementParser):
     date_format = '%d.%m.%Y'
@@ -16,108 +26,65 @@ class KomercniParser(StatementParser):
         self.filename = filename
 
     def parse_intro(self, reader, statement):
-        next_row_is_end_date = False
-
         for row in reader:
             if len(row) == 0:
                 continue
             
-            if next_row_is_end_date:
-                statement.end_date = self.parse_datetime(row[1])
-                next_row_is_end_date = False
-                continue
-            
             id = row[0]
-            if id in ('Account number', 'Číslo účtu'):
+            if id == 'Cislo uctu':
                 statement.account_id = row[1]
-            elif id in ('Statement for period', 'Výpis za období'):
+            elif id == 'Vypis od':
                 statement.start_date = self.parse_datetime(row[1])
-                next_row_is_end_date = True
-            elif id in ('Initial balance', 'Počáteční zůstatek'):
+            elif id == 'Vypis do':
+                statement.end_date = self.parse_datetime(row[1])
+            elif id == 'Pocatecni zustatek':
                 statement.start_balance = self.parse_decimal(row[1])
-            elif id in ('Final balance', 'Konečný zůstatek'):
+            elif id == 'Konecny zustatek':
                 statement.end_balance = self.parse_decimal(row[1])
-            elif id in ('Due date', 'Datum splatnosti'):
+            elif id == 'Datum zauctovani':
                 return row
 
     def parse_transactions(self, reader, header, statement):
         date_field = 0
-        counter_bank_field = index_of(header, 'Counteraccount and bank code', 'Protiúčet a kód banky')
-        counter_account_field = index_of(header, 'Counteraccount name', 'Název protiúčtu')
-        amount_field = index_of(header, 'Amount', 'Částka')
-        trans_id_field = index_of(header, 'Transaction identification',
-                                        'Identifikace transakce')
-        description_field = index_of(header, 'System description', 'Systémový popis')
-        message_field = index_of(header, 'Message for payer', 'Popis příkazce')
-        message_payee_field = index_of(header, 'Message for payee', 'Popis pro příjemce')
-        av1_field = index_of(header, 'AV field 1', 'AV pole 1')
-        av2_field = index_of(header, 'AV field 2', 'AV pole 2')
+        counter_bank_field = header.index('Protistrana')
+        counter_account_field = header.index('Nazev protiuctu')
+        amount_field = header.index('Castka')
+        currency_field = header.index('Mena')
+        trans_id_field = header.index('Identifikace transakce')
+        description_field = header.index('Typ transakce')
+        message_field = header.index('Popis pro me')
+        message_payee_field = header.index('Zprava pro prijemce')
 
+        foreign_payees = []
         for row in reader:
-            line = StatementLine(id = row[trans_id_field],
-                                 date = self.parse_datetime(row[date_field]),
-                                 amount = self.parse_decimal(row[amount_field]))
             desc = row[description_field].strip()
-            message = row[message_field]
-            av1 = row[av1_field].strip()
-            av2 = row[av2_field].strip()
-            if desc in ('Ach deposit', 'Incoming payment', 'Transfer credit', 'Příchozí úhrada'):
-                line.payee = row[counter_account_field]
-                line.memo = message
-                line.trntype = 'DEP'
-            elif desc in ('Ach withdrawal', 'Odchozí úhrada', 'Outgoing payment'):
-                counter = row[counter_account_field]
-                line.payee = counter or message
-                line.memo = row[message_payee_field]
+            if row[currency_field] != 'CZK':
+                if desc != 'Vyrovnávací úhrada':
+                    foreign_payees.append(row[counter_account_field])
+                continue
+
+            line = StatementLine(
+                id = row[trans_id_field],
+                date = self.parse_datetime(row[date_field]),
+                amount = self.parse_decimal(row[amount_field]))
+            if desc == 'Vyrovnávací úhrada':
+                line.payee = ', '.join(foreign_payees)
+                foreign_payees = []
                 line.trntype = 'PAYMENT'
-            elif desc in ('ATM cash withdrawal', 'Výběr hotovosti z ATM'):
-                line.payee = desc
-                line.memo = av1
-                line.trntype = 'ATM'
-            elif desc in ('ATM cash withdrawal - fee', 'Výběr hotovosti poplatek'):
-                line.payee = desc
-                line.memo = row[counter_account_field]
-                line.trntype = 'FEE'
-            elif desc in ('Card purchase', 'Contactless card purchase',
-                          'Credit of purchase', 'Dobití mobilního telefonu',
-                          'Internet mobile payment', 'Internet purchase 3D Secure',
-                          'MO/TO transakce',
-                          'Mobilní platba', 'Mobilní platba na internetu',
-                          'Nákup bezkontaktní kartou', 'Nákup na internetu',
-                          'Nákup na internetu 3D Secure', 'Nákup u obchodníka',
-                          'Nákup na tankomatu',
-                          'Opakovaná platba', 'Opakovaná platba tokenem',
-                          'Purchase on the internet',
-                          'Recharge of mobile phone', 'Recurring payment',
-                          'Vrácení nákupu'):
-                line.payee = av1
-                line.memo = av2
-                line.trntype = 'POS'
-            elif desc in ('Deposit', 'Příchozí úhrada/vklad na účet'):
-                line.payee = av1 or message
-                line.memo = message
-                line.trntype = 'DEP'
-            elif desc in ('Debit memo', 'Debit transfer', 'Force pay debit',
-                          'Priority 3 check', 'Platba na vrub vašeho účtu'):
-                line.payee = message or row[counter_account_field] or row[counter_bank_field]
-                line.memo = av1
-                line.trntype = 'PAYMENT'
-            elif desc in ('ATM balance inquiry fee', 
-                          'Card parameters change', 'Card replacement',
-                          'Dotaz na zůstatek v ATM', 'Fee',
-                          'Payment card maintenance', 'Poplatek',
-                          'Poskytnutí karty-stoplistace', 'Vedení platební karty',
-                          'Změna parametrů karty'):
-                line.payee = av1
-                line.memo = av2
-                line.trntype = 'FEE'
+                line.memo = 'payment in foreign currency'
             else:
-                if desc:
-                    print(f'warning: unknown transaction type: "{desc}"')
-                line.payee = message
-                line.memo = row[counter_account_field]
-                line.trntype = 'OTHER'
+                line.payee = row[counter_account_field] or row[counter_bank_field]
+                line.memo = row[message_field] or row[message_payee_field]
+                trntype = next((tt for tt, types in transaction_types if desc in types), None)
+                if trntype == None:
+                    print(f'warning: transaction type "{desc}" is unknown, mapping to OTHER')
+                    trntype = 'OTHER'
+                line.trntype = trntype
+
             statement.lines.append(line)
+
+        if foreign_payees != []:
+            print('warning: some foreign payments were not balanced with Czech crowns')
                 
     def parse(self):
         statement = Statement(bank_id = 'KOMBCZPP', currency = 'CZK')
