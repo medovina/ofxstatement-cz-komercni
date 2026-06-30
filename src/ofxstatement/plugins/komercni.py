@@ -14,7 +14,7 @@ transaction_types = [
     ('INT', ['Odepsaný úrok']),
     ('PAYMENT', ['Mobilní nákup na internetu', 'Mobilní platba na internetu',
                  'Nákup na internetu', 'Nákup na internetu 3D Secure',
-                 'Odchozí úhrada', 'Odchozí SEPA úhrada']),
+                 'Odchozí platba', 'Odchozí úhrada', 'Odchozí SEPA úhrada']),
     ('POS', ['Nákup bezkontaktní kartou', 'Nákup u obchodníka', 'Úhrada bezkontaktní kartou']),
     ('REPEATPMT', ['Opakovaná platba', 'Trvalý příkaz']),
     ('SRVCHG', ['Poskytnutí karty-stoplistace', 'Zaslání karty/PIN kurýrem'])
